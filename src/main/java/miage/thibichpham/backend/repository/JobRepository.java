@@ -22,4 +22,10 @@ public interface JobRepository extends JpaRepository<Job, Long> {
   Job findById(long id);
 
   void deleteById(long id);
+
+  // @Query("SELECT * from Job")
+  // ArrayList<Job> findByCriteria(@Param("title") String title, @Param("salary")
+  // double salary,
+  // @Param("place") String place);
+
 }

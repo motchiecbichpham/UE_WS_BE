@@ -1,19 +1,18 @@
 package miage.thibichpham.backend.service.company;
 
 import java.util.ArrayList;
-
-import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
-// import org.springframework.security.authentication.AuthenticationManager;
-// import org.springframework.security.authentication.BadCredentialsException;
-// import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
-// import org.springframework.security.core.Authentication;
-// import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import miage.thibichpham.backend.model.Application;
+import miage.thibichpham.backend.model.Candidate;
 import miage.thibichpham.backend.model.Company;
+import miage.thibichpham.backend.model.Job;
+import miage.thibichpham.backend.repository.ApplicationRepository;
+import miage.thibichpham.backend.repository.CandidateRepository;
 import miage.thibichpham.backend.repository.CompanyRepository;
-// import miage.thibichpham.backend.security.JwtUtil;
+import miage.thibichpham.backend.repository.JobRepository;
 
 @Service
 public class CompanyService implements ICompanyService {
@@ -21,58 +20,32 @@ public class CompanyService implements ICompanyService {
   @Autowired
   private CompanyRepository companyRepo;
 
-  // @Autowired
-  // private JwtUtil jwtUtil;
+  @Autowired
+  private JobRepository jobRepo;
 
-  // @Autowired
-  // private AuthenticationManager authenticationManager;
+  @Autowired
+  private ApplicationRepository appRepo;
 
-  // @Override
-  // public String generateToken(String contact) {
-  // Company company = companyRepo.findByContact(contact);
-  // if (company == null) {
-  // throw new RuntimeException("Company not found with contact: " + contact);
-  // }
-  // return jwtUtil.generateToken(contact);
-  // }
+  @Autowired
+  private CandidateRepository canRepo;
 
-  // @Override
-  // public String login(String contact, String password) {
-  // Company company = companyRepo.findByContact(contact);
-  // String hashedPassword = BCrypt.hashpw(password, BCrypt.gensalt());
-  // if (company == null || hashedPassword != company.getPassword()) {
-  // throw new BadCredentialsException("Invalid email/password");
-  // }
-  // Authentication authentication = authenticationManager.authenticate(
-  // new UsernamePasswordAuthenticationToken(contact, password));
-  // SecurityContextHolder.getContext().setAuthentication(authentication);
-  // return "authentication";
-  // }
-
+  // account
   @Override
   public void register(Company c) {
-    String hashedPassword = BCrypt.hashpw(c.getPassword(), BCrypt.gensalt());
+    String hashedPassword = new BCryptPasswordEncoder().encode(c.getPassword());
     c.setPassword(hashedPassword);
     companyRepo.save(c);
   }
 
   @Override
-  public ArrayList<Company> getCompany() {
-    return companyRepo.findAll();
-  }
-
-  @Override
-  public Company getCompanyById(long id) {
+  public Company getCompany(long id) {
     return companyRepo.findById(id);
   }
 
   @Override
-  public Boolean isCompanyExisted(String contact) {
-    Company c = companyRepo.findByContact(contact);
-    if (c == null) {
-      return false;
-    }
-    return true;
+  public Company getCompanyByContact(String contact) {
+    return companyRepo.findByContact(contact);
+
   }
 
   @Override
@@ -87,6 +60,62 @@ public class CompanyService implements ICompanyService {
   @Override
   public void deleteCompanyById(long id) {
     companyRepo.deleteById(id);
+  }
+
+  // job
+  @Override
+  public void createJob(Job j) {
+    Company company = companyRepo.findById(j.getCompany().getId());
+    j.setCompany(company);
+    jobRepo.save(j);
+  }
+
+  @Override
+  public void updateJob(Job j) {
+    Job existedJob = jobRepo.findById(j.getId());
+    if (existedJob != null) {
+      jobRepo.save(j);
+      return;
+    }
+  }
+
+  @Override
+  public void deleteJob(Job j) {
+    jobRepo.deleteById(j.getId());
+  }
+
+  @Override
+  public ArrayList<Job> getJobs(Long id) {
+    return jobRepo.findJobsByCompanyId(id);
+  }
+
+  @Override
+  public Job getJobById(long id) {
+    return jobRepo.findById(id);
+  }
+
+  @Override
+  public ArrayList<Job> getJobsByCriteria(String title, Double salary, String place) {
+    // return jobRepo.findByCriteria(title, salary, place);
+    return new ArrayList<>();
+  }
+
+  // applications
+  @Override
+  public ArrayList<Application> getApplications(long id) {
+    return appRepo.findAllByCompany(id);
+  }
+
+  // candidate
+  @Override
+  public Candidate getCandidate(long id) {
+    return canRepo.findById(id);
+  }
+
+  @Override
+  public void login(String email, String password) {
+    // TODO Auto-generated method stub
+    throw new UnsupportedOperationException("Unimplemented method 'login'");
   }
 
 }

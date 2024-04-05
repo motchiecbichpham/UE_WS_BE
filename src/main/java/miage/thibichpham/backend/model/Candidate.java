@@ -24,5 +24,6 @@ public class Candidate implements Serializable {
   private String email;
   private String password;
   private String phone;
+  private String introduction;
 
 }

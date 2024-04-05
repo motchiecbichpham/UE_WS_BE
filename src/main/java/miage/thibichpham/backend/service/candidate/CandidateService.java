@@ -1,15 +1,16 @@
 package miage.thibichpham.backend.service.candidate;
 
-import java.io.File;
-import java.util.List;
+import java.util.ArrayList;
 
-import org.mindrot.jbcrypt.BCrypt;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import miage.thibichpham.backend.model.Application;
 import miage.thibichpham.backend.model.Candidate;
 import miage.thibichpham.backend.model.Company;
 import miage.thibichpham.backend.model.Job;
+import miage.thibichpham.backend.repository.ApplicationRepository;
 import miage.thibichpham.backend.repository.CandidateRepository;
 import miage.thibichpham.backend.repository.CompanyRepository;
 import miage.thibichpham.backend.repository.JobRepository;
@@ -21,13 +22,15 @@ public class CandidateService implements ICandidateService {
   private JobRepository jobRepo;
   @Autowired
   private CompanyRepository companyRepo;
-
   @Autowired
   private CandidateRepository candidateRepo;
+  @Autowired
+  private ApplicationRepository appRepo;
 
+  // account
   @Override
   public void register(Candidate c) {
-    String hashedPassword = BCrypt.hashpw(c.getPassword(), BCrypt.gensalt());
+    String hashedPassword = new BCryptPasswordEncoder().encode(c.getPassword());
     c.setPassword(hashedPassword);
     candidateRepo.save(c);
   }
@@ -38,39 +41,9 @@ public class CandidateService implements ICandidateService {
   }
 
   @Override
-  public List<Job> getJobs() {
-    return jobRepo.findAll();
-  }
-
-  @Override
-  public Job getJobById(long id) {
-    return jobRepo.findById(id);
-  }
-
-  @Override
-  public List<Job> getJobsByFilter(Job job) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'getJobsByFilter'");
-  }
-
-  @Override
-  public void applyJob(File cv) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'applyJob'");
-  }
-
-  @Override
-  public Company getCompany(long id) {
-    return companyRepo.findById(id);
-  }
-
-  @Override
-  public Boolean isCandidatExisted(Candidate c) {
-    Candidate existedCandidat = candidateRepo.findByEmail(c.getEmail());
-    if (existedCandidat == null) {
-      return false;
-    }
-    return true;
+  public Candidate getCandidateByEmail(String email) {
+    Candidate existedCandidat = candidateRepo.findByEmail(email);
+    return existedCandidat;
   }
 
   @Override
@@ -91,6 +64,68 @@ public class CandidateService implements ICandidateService {
   public void deleteCandidat(long id) {
     candidateRepo.deleteById(id);
 
+  }
+
+  // @Override
+  // public UserDetails loadUserByUsername(String username) throws
+  // UsernameNotFoundException {
+  // Candidate c = candidateRepo.findByEmail(username);
+  // SimpleGrantedAuthority userAuthority = new
+  // SimpleGrantedAuthority("Candidate");
+  // Collection<GrantedAuthority> authorities = new ArrayList<>();
+  // authorities.add(userAuthority);
+  // User s = new User(c.getEmail(), c.getPassword(), authorities);
+  // return s;
+  // }
+
+  // job
+
+  @Override
+  public ArrayList<Job> getJobs() {
+    return jobRepo.findAll();
+  }
+
+  @Override
+  public Job getJobById(long id) {
+    return jobRepo.findById(id);
+  }
+
+  @Override
+  public ArrayList<Job> getJobsByFilter(Job job) {
+    // TODO Auto-generated method stub
+    throw new UnsupportedOperationException("Unimplemented method 'getJobsByFilter'");
+  }
+
+  // company
+  @Override
+  public Company getCompanyById(long id) {
+    return companyRepo.findById(id);
+  }
+
+  @Override
+  public ArrayList<Company> getCompany() {
+    return companyRepo.findAll();
+  }
+
+  // application
+
+  @Override
+  public void createApplication(Application a) {
+    appRepo.save(a);
+  }
+
+  @Override
+  public ArrayList<Application> getApplications(long id) {
+    return appRepo.findAllByCandidate(id);
+  }
+
+  @Override
+  public Boolean isCandidateApplied(Candidate c, Job j) {
+    Application existedApplication = appRepo.findExistedApplication(c.getId(), j.getId());
+    if (existedApplication != null) {
+      return true;
+    }
+    return false;
   }
 
 }

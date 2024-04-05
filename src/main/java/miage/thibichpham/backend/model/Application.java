@@ -7,6 +7,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
+import jakarta.persistence.Lob;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
 import lombok.Data;
@@ -20,14 +22,16 @@ public class Application implements Serializable {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private long id;
 
-  @OneToOne
+  @ManyToOne
   @JoinColumn(name = "job_id", referencedColumnName = "id")
   private Job job;
 
-  @OneToOne
+  @ManyToOne
   @JoinColumn(name = "candidate_id", referencedColumnName = "id")
   private Candidate candidate;
 
+  @Lob
+  private byte[] resume;
   private int status;
 
 }

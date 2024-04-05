@@ -19,7 +19,7 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
   @Query(value = "Select * from Application where candidate_id = :id", nativeQuery = true)
   ArrayList<Application> findAllByCandidate(@Param("id") long id);
 
-  @Query(value = "Select * from Application join Job on Application.job_id = job.id where job.company_id = :id", nativeQuery = true)
+  @Query(value = "Select Application.* from Application join Job on Application.job_id = job.id where job.company_id = :id", nativeQuery = true)
   ArrayList<Application> findAllByCompany(@Param("id") long id);
 
   @Query(value = "Select * from Application where candidate_id = :candidateId and job_id = :jobId", nativeQuery = true)

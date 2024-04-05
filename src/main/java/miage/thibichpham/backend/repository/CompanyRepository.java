@@ -24,9 +24,6 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
 
   ArrayList<Company> findAll();
 
-  @Query(value = "Select * from Company where id = :id", nativeQuery = true)
-  ArrayList<Company> findByyId(@Param("id") Long id);
-
   Company save(Company c);
 
   Company findById(long id);

@@ -20,7 +20,7 @@ public class Company implements Serializable {
   private String name;
   private String contact;
   private String address;
-  private String postalCode;
+  private String city;
   private String introduction;
   private String description;
   private String password;

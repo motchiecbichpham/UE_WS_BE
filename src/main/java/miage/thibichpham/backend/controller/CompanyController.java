@@ -3,6 +3,7 @@ package miage.thibichpham.backend.controller;
 import java.util.ArrayList;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,7 +22,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import miage.thibichpham.backend.model.Application;
-import miage.thibichpham.backend.model.Candidate;
 import miage.thibichpham.backend.model.Company;
 import miage.thibichpham.backend.model.Job;
 import miage.thibichpham.backend.model.UserType;
@@ -49,7 +49,9 @@ public class CompanyController {
     this.companyService = companyService;
   }
 
-  // auth
+  // AUTH API
+
+  //sign up new company account
   @PostMapping("/sign-up")
   public ResponseEntity<String> register(@RequestBody Company c) {
     Company comByContact = companyService.getCompanyByContact(c.getContact());
@@ -61,6 +63,7 @@ public class CompanyController {
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 
+  //login with jwt
   @PostMapping("/login")
   public ResponseEntity<LoginResponse> login(@RequestBody Company company) {
     customUserService.setUserType(UserType.COMPANY);
@@ -75,6 +78,7 @@ public class CompanyController {
     return ResponseEntity.ok().body(lr);
   }
 
+  //update company account
   @PutMapping("/{id}")
   public ResponseEntity<Company> updateCompany(@PathVariable("id") long id, @RequestBody Company company) {
     Company comById = companyService.getCompany(id);
@@ -90,6 +94,7 @@ public class CompanyController {
     return new ResponseEntity<>(company, HttpStatus.OK);
   }
 
+  
   @DeleteMapping("/{id}")
   public ResponseEntity<String> deleteCompany(@PathVariable("id") long id) {
     Company existedCompany = companyService.getCompany(id);
@@ -110,7 +115,10 @@ public class CompanyController {
     return new ResponseEntity<>(c, HttpStatus.OK);
   }
 
-  // JOB
+
+  // JOB API
+
+  // create new job
   @PostMapping("/create-job")
   public ResponseEntity<String> createJob(@RequestBody Job j) {
     Company existedCompany = companyService.getCompany(j.getCompany().getId());
@@ -119,8 +127,10 @@ public class CompanyController {
     }
     companyService.createJob(j);
     return ResponseEntity.status(HttpStatus.CREATED).build();
+
   }
 
+  //get all jobs
   @GetMapping("/job")
   public ResponseEntity<ArrayList<Job>> getJobsByCompany(@RequestParam("companyId") long companyId) {
     ArrayList<Job> jobs = companyService.getJobs(companyId);
@@ -130,6 +140,7 @@ public class CompanyController {
     return new ResponseEntity<>(jobs, HttpStatus.OK);
   }
 
+  //get job by id
   @GetMapping("/job/{id}")
   public ResponseEntity<Job> getJobById(@PathVariable("id") long id) {
     Job job = companyService.getJobById(id);
@@ -139,17 +150,19 @@ public class CompanyController {
     return new ResponseEntity<>(job, HttpStatus.OK);
   }
 
+  //update job
   @PutMapping("/job/{id}")
-  public ResponseEntity<String> updateJob(@PathVariable("id") long id, @RequestBody Job job) {
+  public ResponseEntity<Job> updateJob(@PathVariable("id") long id, @RequestBody Job job) {
     Job existedJob = companyService.getJobById(id);
     if (existedJob == null) {
-      return new ResponseEntity<>("Job with ID " + id + " not found", HttpStatus.NOT_FOUND);
+      return new ResponseEntity<>(job, HttpStatus.NOT_FOUND);
     }
     job.setId(id);
     companyService.updateJob(job);
-    return ResponseEntity.status(HttpStatus.OK).build();
+    return new ResponseEntity<>(job, HttpStatus.OK);
   }
 
+  //job delete
   @DeleteMapping("/job/{id}")
   public ResponseEntity<String> deleteJob(@PathVariable("id") long id) {
     Job existedJob = companyService.getJobById(id);
@@ -161,10 +174,12 @@ public class CompanyController {
     return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
   }
 
-  // APPLICATION
+  // APPLICATION API
+
+  // get all applications for each job
   @GetMapping("/application")
-  public ResponseEntity<ArrayList<Application>> getApplicationByCompany(@RequestParam("companyId") long companyId) {
-    ArrayList<Application> applications = companyService.getApplications(companyId);
+  public ResponseEntity<ArrayList<Application>> getApplicationByJob(@RequestParam("jobId") long jobId) {
+    ArrayList<Application> applications = companyService.getApplications(jobId);
     if (applications.isEmpty()) {
       return new ResponseEntity<>(HttpStatus.NO_CONTENT);
 
@@ -172,14 +187,13 @@ public class CompanyController {
     return new ResponseEntity<>(applications, HttpStatus.OK);
   }
 
-  // CANDIDATE
-  @GetMapping("/candidate/{id}")
-  public ResponseEntity<Candidate> getCandidateById(@PathVariable("id") long id) {
-    Candidate existedCandidate = companyService.getCandidate(id);
-    if (existedCandidate == null) {
-      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-    }
-    return new ResponseEntity<>(existedCandidate, HttpStatus.OK);
+  // get file CV
+  @GetMapping("/file-application/{id}")
+  public ResponseEntity<byte[]> getFile(@PathVariable long id) {
+    Application app = companyService.getApplicationById(id);
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + app.getResumeName() + "\"")
+        .body(app.getResume());
   }
 
 }

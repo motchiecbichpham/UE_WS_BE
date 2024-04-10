@@ -14,6 +14,9 @@ public interface JobRepository extends JpaRepository<Job, Long> {
 
   ArrayList<Job> findAll();
 
+  @Query(value = "Select * from Job where status = 'Open'", nativeQuery = true)
+  ArrayList<Job> findJobOpen();
+
   @Query(value = "Select * from Job where company_id = :companyId", nativeQuery = true)
   ArrayList<Job> findJobsByCompanyId(@Param("companyId") Long companyId);
 
@@ -22,10 +25,5 @@ public interface JobRepository extends JpaRepository<Job, Long> {
   Job findById(long id);
 
   void deleteById(long id);
-
-  // @Query("SELECT * from Job")
-  // ArrayList<Job> findByCriteria(@Param("title") String title, @Param("salary")
-  // double salary,
-  // @Param("place") String place);
 
 }

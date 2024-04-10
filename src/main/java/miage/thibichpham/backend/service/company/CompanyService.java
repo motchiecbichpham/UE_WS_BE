@@ -81,6 +81,7 @@ public class CompanyService implements ICompanyService {
 
   @Override
   public void deleteJob(Job j) {
+    // appRepo.deleteByJob(j.getId());
     jobRepo.deleteById(j.getId());
   }
 
@@ -94,28 +95,14 @@ public class CompanyService implements ICompanyService {
     return jobRepo.findById(id);
   }
 
-  @Override
-  public ArrayList<Job> getJobsByCriteria(String title, Double salary, String place) {
-    // return jobRepo.findByCriteria(title, salary, place);
-    return new ArrayList<>();
-  }
-
   // applications
   @Override
   public ArrayList<Application> getApplications(long id) {
-    return appRepo.findAllByCompany(id);
-  }
-
-  // candidate
-  @Override
-  public Candidate getCandidate(long id) {
-    return canRepo.findById(id);
+    return appRepo.findAllByJob(id);
   }
 
   @Override
-  public void login(String email, String password) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'login'");
+  public Application getApplicationById(long id) {
+    return appRepo.findById(id);
   }
-
 }

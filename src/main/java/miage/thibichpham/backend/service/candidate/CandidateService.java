@@ -35,10 +35,6 @@ public class CandidateService implements ICandidateService {
     candidateRepo.save(c);
   }
 
-  @Override
-  public void login(String email, String password) {
-
-  }
 
   @Override
   public Candidate getCandidateByEmail(String email) {
@@ -66,23 +62,9 @@ public class CandidateService implements ICandidateService {
 
   }
 
-  // @Override
-  // public UserDetails loadUserByUsername(String username) throws
-  // UsernameNotFoundException {
-  // Candidate c = candidateRepo.findByEmail(username);
-  // SimpleGrantedAuthority userAuthority = new
-  // SimpleGrantedAuthority("Candidate");
-  // Collection<GrantedAuthority> authorities = new ArrayList<>();
-  // authorities.add(userAuthority);
-  // User s = new User(c.getEmail(), c.getPassword(), authorities);
-  // return s;
-  // }
-
-  // job
-
   @Override
   public ArrayList<Job> getJobs() {
-    return jobRepo.findAll();
+    return jobRepo.findJobOpen();
   }
 
   @Override
@@ -90,11 +72,7 @@ public class CandidateService implements ICandidateService {
     return jobRepo.findById(id);
   }
 
-  @Override
-  public ArrayList<Job> getJobsByFilter(Job job) {
-    // TODO Auto-generated method stub
-    throw new UnsupportedOperationException("Unimplemented method 'getJobsByFilter'");
-  }
+
 
   // company
   @Override
@@ -115,6 +93,11 @@ public class CandidateService implements ICandidateService {
   }
 
   @Override
+  public void deleteApplication(long id) {
+    appRepo.deleteById(id);
+  }
+
+  @Override
   public ArrayList<Application> getApplications(long id) {
     return appRepo.findAllByCandidate(id);
   }
@@ -126,6 +109,11 @@ public class CandidateService implements ICandidateService {
       return true;
     }
     return false;
+  }
+
+  @Override
+  public Application getApplicationById(long id) {
+    return appRepo.findById(id);
   }
 
 }

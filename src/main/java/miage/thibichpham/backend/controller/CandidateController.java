@@ -4,13 +4,13 @@ import java.util.ArrayList;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,9 +24,9 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 import miage.thibichpham.backend.model.Application;
 import miage.thibichpham.backend.model.Candidate;
-import miage.thibichpham.backend.model.Company;
 import miage.thibichpham.backend.model.Job;
 import miage.thibichpham.backend.model.UserType;
+import miage.thibichpham.backend.model.response.JobResponse;
 import miage.thibichpham.backend.model.response.LoginResponse;
 import miage.thibichpham.backend.security.CustomUserService;
 import miage.thibichpham.backend.security.JwtGenerator;
@@ -51,7 +51,9 @@ public class CandidateController {
     this.candidateService = candidateService;
   }
 
-  // CANDIDATE
+  // AUTH API
+
+  // sign up new account
   @PostMapping("/sign-up")
   public ResponseEntity<String> register(@RequestBody Candidate c) {
     Candidate candidate = candidateService.getCandidateByEmail(c.getEmail());
@@ -63,6 +65,7 @@ public class CandidateController {
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 
+  // login with jwt
   @PostMapping("/login")
   public ResponseEntity<LoginResponse> login(@RequestBody Candidate candidate) {
     customUserService.setUserType(UserType.CANDIDATE);
@@ -78,6 +81,7 @@ public class CandidateController {
     return ResponseEntity.ok().body(lr);
   }
 
+  // update account
   @PutMapping("/{id}")
   public ResponseEntity<Candidate> updateCandidate(@PathVariable("id") long id, @RequestBody Candidate candidate) {
     Candidate existedCandidate = candidateService.getCandidateById(id);
@@ -101,17 +105,10 @@ public class CandidateController {
     return ResponseEntity.status(HttpStatus.OK).build();
   }
 
-  @GetMapping("/{id}")
-  public ResponseEntity<Candidate> getCompany(@PathVariable("id") long id) {
-    Candidate c = candidateService.getCandidateById(id);
-    if (c == null) {
-      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
-    }
-    return new ResponseEntity<>(c, HttpStatus.OK);
-  }
-  // JOB
+  // JOB API
 
-  @GetMapping("/job")
+  // get all jobs
+  @GetMapping("/jobs")
   public ResponseEntity<List<Job>> getAllJobs() {
     List<Job> jobs = candidateService.getJobs();
     if (jobs.isEmpty()) {
@@ -121,21 +118,35 @@ public class CandidateController {
     return new ResponseEntity<>(jobs, HttpStatus.OK);
   }
 
-  @GetMapping("/job/{id}")
-  public ResponseEntity<Job> getJobById(@PathVariable("id") long id) {
-    Job job = candidateService.getJobById(id);
+  // get job by id
+  @GetMapping("/job")
+  public ResponseEntity<JobResponse> getJobById(@RequestParam("jobId") long jobId,
+      @RequestParam("canId") long canId) {
+    Candidate can = new Candidate();
+    can.setId(canId);
+    Job job = candidateService.getJobById(jobId);
     if (job == null) {
       return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
-    return new ResponseEntity<>(job, HttpStatus.OK);
+    Boolean isApplied = candidateService.isCandidateApplied(can, job);
+    JobResponse jr = new JobResponse(isApplied, job);
+    return new ResponseEntity<JobResponse>(jr, HttpStatus.OK);
   }
 
-  // APPLICATIONS
+  // APPLICATIONS API
 
+  // create new application, apply job
   @PostMapping("/apply-job")
   public ResponseEntity<String> submitApplication(@RequestParam("resume") MultipartFile resume,
       @RequestParam("jobId") long jobId, @RequestParam("candidateId") long canId) {
-    if (!resume.isEmpty()) {
+    Candidate c = candidateService.getCandidateById(canId);
+    Job j = candidateService.getJobById(jobId);
+
+    if (!resume.isEmpty() && c != null && j != null) {
+      Boolean isApplied = candidateService.isCandidateApplied(c, j);
+      if (isApplied) {
+        return new ResponseEntity<>("This candidate applied this job already", HttpStatus.BAD_REQUEST);
+      }
       try {
         Application application = new Application();
         Candidate can = new Candidate();
@@ -145,36 +156,38 @@ public class CandidateController {
         application.setCandidate(can);
         application.setJob(job);
         application.setStatus(1);
-        application.setResume(resume.getBytes());
 
+        String fileName = StringUtils.cleanPath(resume.getOriginalFilename());
+        application.setResumeName(fileName);
+        application.setResumeType(resume.getContentType());
+        application.setResume(resume.getBytes());
         candidateService.createApplication(application);
-        return new ResponseEntity<>("OK", HttpStatus.OK);
+        return new ResponseEntity<>(HttpStatus.OK);
 
       } catch (Exception e) {
-        System.out.println(e);
-        return new ResponseEntity<>("hahaha", HttpStatus.BAD_REQUEST);
+        return new ResponseEntity<>("Applied failed", HttpStatus.BAD_REQUEST);
       }
 
     }
-    return new ResponseEntity<>("hahaha", HttpStatus.BAD_REQUEST);
+    return new ResponseEntity<>("Applied failed", HttpStatus.BAD_REQUEST);
 
   }
 
-  @GetMapping("/files")
-  public ResponseEntity<byte[]> getFile() {
-    ArrayList<Application> a = candidateService.getApplications(1);
-    byte[] resume = a.get(0).getResume();
-    try {
-      return ResponseEntity.ok()
-          .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + "\"")
-          .body(resume);
-    } catch (Exception e) {
-      return ResponseEntity.ok()
-          .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + "\"")
-          .body(null);
+  // delete an application
+  @DeleteMapping("/application")
+  public ResponseEntity<String> deleteApplicationById(@RequestParam("applicationId") long applicationId,
+      @RequestParam("candidateId") long candidateId) {
+    Application existedApplication = candidateService.getApplicationById(applicationId);
+    if (existedApplication == null) {
+      return new ResponseEntity<>("Application with ID " + applicationId + " not found", HttpStatus.NOT_FOUND);
+    } else if (existedApplication.getCandidate().getId() != candidateId) {
+      return new ResponseEntity<>("Application with ID " + applicationId + " not found", HttpStatus.NOT_FOUND);
     }
+    candidateService.deleteApplication(applicationId);
+    return ResponseEntity.status(HttpStatus.OK).build();
   }
 
+  // get all applications
   @GetMapping("/application")
   public ResponseEntity<ArrayList<Application>> getApplicationByCandidat(
       @RequestParam("candidateId") long candidateId) {
@@ -185,23 +198,4 @@ public class CandidateController {
     return new ResponseEntity<>(applications, HttpStatus.OK);
   }
 
-  // COMPANY
-  @GetMapping("/company/{companyId}")
-  public ResponseEntity<Company> getCompanyById(
-      @PathVariable("companyId") long companyId) {
-    Company company = candidateService.getCompanyById(companyId);
-    if (company == null) {
-      return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-    }
-    return new ResponseEntity<>(company, HttpStatus.OK);
-  }
-
-  @GetMapping("/company")
-  public ResponseEntity<ArrayList<Company>> getCompany() {
-    ArrayList<Company> companies = candidateService.getCompany();
-    if (companies.isEmpty()) {
-      return new ResponseEntity<>(HttpStatus.NO_CONTENT);
-    }
-    return new ResponseEntity<>(companies, HttpStatus.OK);
-  }
 }

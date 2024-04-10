@@ -20,8 +20,6 @@ public interface ICompanyService {
 
   void deleteCompanyById(long id);
 
-  void login(String email, String password);
-
   // job
   void createJob(Job j);
 
@@ -33,12 +31,9 @@ public interface ICompanyService {
 
   Job getJobById(long id);
 
-  ArrayList<Job> getJobsByCriteria(String title, Double salary, String place);
-
   // applications
   ArrayList<Application> getApplications(long id);
 
-  // candidate
-  Candidate getCandidate(long id);
+  Application getApplicationById(long id);
 
 }

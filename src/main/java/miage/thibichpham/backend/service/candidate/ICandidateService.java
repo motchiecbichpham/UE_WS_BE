@@ -11,8 +11,6 @@ public interface ICandidateService {
   // candidate
   void register(Candidate c);
 
-  void login(String email, String password);
-
   Candidate getCandidateByEmail(String email);
 
   Candidate getCandidateById(long id);
@@ -27,8 +25,6 @@ public interface ICandidateService {
 
   Job getJobById(long id);
 
-  ArrayList<Job> getJobsByFilter(Job job);
-
   // company
 
   Company getCompanyById(long id);
@@ -39,10 +35,12 @@ public interface ICandidateService {
 
   void createApplication(Application a);
 
+  void deleteApplication(long id);
+
   ArrayList<Application> getApplications(long id);
 
   Boolean isCandidateApplied(Candidate c, Job j);
 
-  // Candidate findByUsername
+  Application getApplicationById(long id);
 
 }

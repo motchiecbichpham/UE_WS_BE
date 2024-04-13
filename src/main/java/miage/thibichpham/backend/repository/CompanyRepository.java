@@ -19,6 +19,4 @@ public interface CompanyRepository extends JpaRepository<Company, Long> {
 
   @Query(value = "Select * from Company where contact = :contact", nativeQuery = true)
   Company findByContact(@Param("contact") String contact);
-
-  void deleteById(long id);
 }

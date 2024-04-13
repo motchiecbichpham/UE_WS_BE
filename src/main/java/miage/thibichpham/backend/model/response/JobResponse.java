@@ -5,6 +5,11 @@ import miage.thibichpham.backend.model.Job;
 public class JobResponse {
   private Boolean isApplied;
   private Job job;
+  private String message;
+
+  public JobResponse(String message) {
+    this.message = message;
+  }
 
   public JobResponse(Boolean isApplied, Job job) {
     this.isApplied = isApplied;
@@ -25,6 +30,14 @@ public class JobResponse {
 
   public void setJob(Job job) {
     this.job = job;
+  }
+
+  public String getMessage() {
+    return message;
+  }
+
+  public void setMessage(String message) {
+    this.message = message;
   }
 
 }

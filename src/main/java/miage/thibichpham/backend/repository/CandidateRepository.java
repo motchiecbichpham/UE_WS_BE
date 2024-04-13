@@ -16,5 +16,4 @@ public interface CandidateRepository extends JpaRepository<Candidate, Long> {
   @Query(value = "Select * from Candidate where email = :email", nativeQuery = true)
   Candidate findByEmail(@Param("email") String email);
 
-  void deleteById(long id);
 }

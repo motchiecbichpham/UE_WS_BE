@@ -3,14 +3,13 @@ package miage.thibichpham.backend.service.company;
 import java.util.ArrayList;
 
 import miage.thibichpham.backend.model.Application;
-import miage.thibichpham.backend.model.Candidate;
 import miage.thibichpham.backend.model.Company;
 import miage.thibichpham.backend.model.Job;
 
 public interface ICompanyService {
 
-  // company
-  void register(Company c);
+  // COMPANY
+  void register(Company company);
 
   Company getCompany(long id);
 
@@ -18,22 +17,20 @@ public interface ICompanyService {
 
   void updateCompany(Company c);
 
-  void deleteCompanyById(long id);
-
-  // job
+  // JOB
   void createJob(Job j);
 
   void updateJob(Job j);
-
-  void deleteJob(Job j);
 
   ArrayList<Job> getJobs(Long id);
 
   Job getJobById(long id);
 
-  // applications
-  ArrayList<Application> getApplications(long id);
+  // APPLICATIONS
+  ArrayList<Application> getApplicationsByJob(long jobId);
 
-  Application getApplicationById(long id);
+  Application getApplicationById(long applicationId);
+
+  void sendEmail(Application application);
 
 }

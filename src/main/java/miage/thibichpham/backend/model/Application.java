@@ -1,6 +1,7 @@
 package miage.thibichpham.backend.model;
 
 import java.io.Serializable;
+import java.util.Date;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -37,6 +38,6 @@ public class Application implements Serializable {
   @Lob
   @Column(length = 100000)
   private byte[] resume;
-  private int status;
+  private Date createdDate;
 
 }

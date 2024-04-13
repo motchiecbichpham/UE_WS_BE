@@ -38,5 +38,6 @@ public class Job implements Serializable {
   private Date expiredDate;
   private String status;
   private int amountHiring;
+  private Date createdDate;
 
 }

@@ -1,6 +1,7 @@
 package miage.thibichpham.backend.controller;
 
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,13 +11,14 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -28,6 +30,7 @@ import miage.thibichpham.backend.model.Job;
 import miage.thibichpham.backend.model.UserType;
 import miage.thibichpham.backend.model.response.JobResponse;
 import miage.thibichpham.backend.model.response.LoginResponse;
+import miage.thibichpham.backend.model.response.StringResponse;
 import miage.thibichpham.backend.security.CustomUserService;
 import miage.thibichpham.backend.security.JwtGenerator;
 import miage.thibichpham.backend.service.candidate.ICandidateService;
@@ -53,19 +56,18 @@ public class CandidateController {
 
   // AUTH API
 
-  // sign up new account
   @PostMapping("/sign-up")
-  public ResponseEntity<String> register(@RequestBody Candidate c) {
+  public ResponseEntity<StringResponse> register(@RequestBody Candidate c) {
     Candidate candidate = candidateService.getCandidateByEmail(c.getEmail());
     if (candidate != null) {
-      return new ResponseEntity<>("Candidat with email " + c.getEmail() + " already exists",
-          HttpStatus.CONFLICT);
+      StringResponse response = new StringResponse("This email has been registered already");
+      return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
     candidateService.register(c);
-    return ResponseEntity.status(HttpStatus.CREATED).build();
+    StringResponse response = new StringResponse("Created account successfully");
+    return ResponseEntity.status(HttpStatus.CREATED).body(response);
   }
 
-  // login with jwt
   @PostMapping("/login")
   public ResponseEntity<LoginResponse> login(@RequestBody Candidate candidate) {
     customUserService.setUserType(UserType.CANDIDATE);
@@ -78,124 +80,152 @@ public class CandidateController {
     String token = jwtGen.generateToken(authentication, UserType.CANDIDATE.toString());
     LoginResponse lr = new LoginResponse(token, candidateByEmail);
 
-    return ResponseEntity.ok().body(lr);
+    return ResponseEntity.status(HttpStatus.OK).body(lr);
   }
 
-  // update account
-  @PutMapping("/{id}")
-  public ResponseEntity<Candidate> updateCandidate(@PathVariable("id") long id, @RequestBody Candidate candidate) {
-    Candidate existedCandidate = candidateService.getCandidateById(id);
+  @PatchMapping("/{candidateId}")
+  public ResponseEntity<?> updateCandidate(@PathVariable("candidateId") long candidateId,
+      @RequestBody Candidate candidate,
+      Authentication authentication) {
+    StringResponse response = new StringResponse("");
+    Candidate existedCandidate = candidateService.getCandidateById(candidateId);
     if (existedCandidate == null) {
-      return new ResponseEntity<>(candidate, HttpStatus.NOT_FOUND);
+      response.setMessage("Candidate with id " + candidateId + "is existed.");
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
-    candidate.setId(id);
+    if (!validTokenWithData(authentication, existedCandidate.getEmail())) {
+      response.setMessage("Forbidden");
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+    candidate.setId(candidateId);
     candidate.setPassword(existedCandidate.getPassword());
     candidate.setEmail(existedCandidate.getEmail());
     candidateService.updateCandidate(candidate);
-    return new ResponseEntity<>(candidate, HttpStatus.OK);
+    return ResponseEntity.status(HttpStatus.OK).body(candidate);
   }
 
-  @DeleteMapping("/{id}")
-  public ResponseEntity<String> deleteCandidate(@PathVariable("id") long id) {
-    Candidate existedCandidate = candidateService.getCandidateById(id);
-    if (existedCandidate == null) {
-      return new ResponseEntity<>("Candidate with ID " + id + " not found", HttpStatus.NOT_FOUND);
-    }
-    candidateService.deleteCandidat(id);
-    return ResponseEntity.status(HttpStatus.OK).build();
-  }
-
+  // ------------------------------------------------------------------------------------------------------------------
   // JOB API
 
-  // get all jobs
   @GetMapping("/jobs")
   public ResponseEntity<List<Job>> getAllJobs() {
     List<Job> jobs = candidateService.getJobs();
     if (jobs.isEmpty()) {
       return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
-
-    return new ResponseEntity<>(jobs, HttpStatus.OK);
+    return ResponseEntity.status(HttpStatus.OK).body(jobs);
   }
 
-  // get job by id
   @GetMapping("/job")
   public ResponseEntity<JobResponse> getJobById(@RequestParam("jobId") long jobId,
-      @RequestParam("canId") long canId) {
-    Candidate can = new Candidate();
-    can.setId(canId);
-    Job job = candidateService.getJobById(jobId);
-    if (job == null) {
-      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+      @RequestParam("candidateId") long candidateId, Authentication authentication) {
+    Candidate existedCandidate = candidateService.getCandidateById(candidateId);
+    JobResponse response = new JobResponse("");
+    if (existedCandidate == null) {
+      response.setMessage("Can not find the Candidate with ID " + jobId);
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
-    Boolean isApplied = candidateService.isCandidateApplied(can, job);
-    JobResponse jr = new JobResponse(isApplied, job);
-    return new ResponseEntity<JobResponse>(jr, HttpStatus.OK);
+    if (!validTokenWithData(authentication, existedCandidate.getEmail())) {
+      response.setMessage("Forbidden");
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+    Job existedJob = candidateService.getJobById(jobId);
+    if (existedJob == null) {
+      response.setMessage("Can not find the job with ID " + jobId);
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+    Boolean isApplied = candidateService.isCandidateApplied(existedCandidate, existedJob);
+    JobResponse jr = new JobResponse(isApplied, existedJob);
+    return ResponseEntity.status(HttpStatus.OK).body(jr);
   }
 
+  // ------------------------------------------------------------------------------------------------------------------
   // APPLICATIONS API
 
-  // create new application, apply job
   @PostMapping("/apply-job")
-  public ResponseEntity<String> submitApplication(@RequestParam("resume") MultipartFile resume,
-      @RequestParam("jobId") long jobId, @RequestParam("candidateId") long canId) {
-    Candidate c = candidateService.getCandidateById(canId);
-    Job j = candidateService.getJobById(jobId);
-
-    if (!resume.isEmpty() && c != null && j != null) {
-      Boolean isApplied = candidateService.isCandidateApplied(c, j);
+  public ResponseEntity<StringResponse> submitApplication(@RequestParam("resume") MultipartFile resume,
+      @RequestParam("jobId") long jobId, @RequestParam("candidateId") long candidateId, Authentication authentication) {
+    Candidate existedCandidate = candidateService.getCandidateById(candidateId);
+    Job existedJob = candidateService.getJobById(jobId);
+    StringResponse response = new StringResponse("");
+    if (!resume.isEmpty() && existedCandidate != null && existedJob != null) {
+      if (!validTokenWithData(authentication, existedCandidate.getEmail())) {
+        response.setMessage("Forbidden");
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+      }
+      Boolean isApplied = candidateService.isCandidateApplied(existedCandidate, existedJob);
       if (isApplied) {
-        return new ResponseEntity<>("This candidate applied this job already", HttpStatus.BAD_REQUEST);
+        response.setMessage("This candidate applied this job already");
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
       }
       try {
         Application application = new Application();
-        Candidate can = new Candidate();
-        Job job = new Job();
-        can.setId(canId);
-        job.setId(jobId);
-        application.setCandidate(can);
-        application.setJob(job);
-        application.setStatus(1);
+        application.setCandidate(existedCandidate);
+        application.setJob(existedJob);
 
         String fileName = StringUtils.cleanPath(resume.getOriginalFilename());
         application.setResumeName(fileName);
         application.setResumeType(resume.getContentType());
         application.setResume(resume.getBytes());
+        application.setCreatedDate(new Date());
         candidateService.createApplication(application);
-        return new ResponseEntity<>(HttpStatus.OK);
-
+        candidateService.sendEmail(application);
+        response.setMessage("Applied successfully");
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
       } catch (Exception e) {
-        return new ResponseEntity<>("Applied failed", HttpStatus.BAD_REQUEST);
+        response.setMessage("Errors happens when submitting");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
       }
-
     }
-    return new ResponseEntity<>("Applied failed", HttpStatus.BAD_REQUEST);
+    response.setMessage("Errors with file happens");
+    return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(response);
 
   }
 
-  // delete an application
   @DeleteMapping("/application")
-  public ResponseEntity<String> deleteApplicationById(@RequestParam("applicationId") long applicationId,
-      @RequestParam("candidateId") long candidateId) {
+  public ResponseEntity<StringResponse> deleteApplicationById(@RequestParam("applicationId") long applicationId,
+      Authentication authentication) {
+
+    StringResponse response = new StringResponse("");
     Application existedApplication = candidateService.getApplicationById(applicationId);
     if (existedApplication == null) {
-      return new ResponseEntity<>("Application with ID " + applicationId + " not found", HttpStatus.NOT_FOUND);
-    } else if (existedApplication.getCandidate().getId() != candidateId) {
-      return new ResponseEntity<>("Application with ID " + applicationId + " not found", HttpStatus.NOT_FOUND);
+      response.setMessage("Application with ID " + applicationId + " not found");
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+    if (!validTokenWithData(authentication, existedApplication.getCandidate().getEmail())) {
+      response.setMessage(("Forbidden"));
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
     candidateService.deleteApplication(applicationId);
-    return ResponseEntity.status(HttpStatus.OK).build();
+    response.setMessage("Delete successfully");
+    return ResponseEntity.status(HttpStatus.OK).body(response);
   }
 
-  // get all applications
   @GetMapping("/application")
-  public ResponseEntity<ArrayList<Application>> getApplicationByCandidat(
-      @RequestParam("candidateId") long candidateId) {
-    ArrayList<Application> applications = candidateService.getApplications(candidateId);
+  public ResponseEntity<ArrayList<Application>> getApplicationByCandidate(
+      @RequestParam("candidateId") long candidateId, Authentication authentication) {
+    Candidate existedCandidate = candidateService.getCandidateById(candidateId);
+    if (existedCandidate == null) {
+      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
+    if (!validTokenWithData(authentication, existedCandidate.getEmail())) {
+      return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+    }
+    ArrayList<Application> applications = candidateService.getApplicationsByCandidate(candidateId);
     if (applications.isEmpty()) {
       return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
-    return new ResponseEntity<>(applications, HttpStatus.OK);
+    return ResponseEntity.status(HttpStatus.OK).body(applications);
   }
 
+  // ------------------------------------------------------------------------------------------------------------------
+
+  private boolean validTokenWithData(Authentication authentication, String username) {
+    UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+    if (!userDetails.getUsername().equals(username)) {
+      return false;
+    }
+    return true;
+
+  }
 }

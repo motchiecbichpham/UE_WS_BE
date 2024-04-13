@@ -14,16 +14,14 @@ public interface JobRepository extends JpaRepository<Job, Long> {
 
   ArrayList<Job> findAll();
 
-  @Query(value = "Select * from Job where status = 'Open'", nativeQuery = true)
+  @Query(value = "Select * from Job where status = 'Open' order by created_date desc", nativeQuery = true)
   ArrayList<Job> findJobOpen();
 
-  @Query(value = "Select * from Job where company_id = :companyId", nativeQuery = true)
+  @Query(value = "Select * from Job where company_id = :companyId order by created_date desc", nativeQuery = true)
   ArrayList<Job> findJobsByCompanyId(@Param("companyId") Long companyId);
 
   Job save(Job j);
 
   Job findById(long id);
-
-  void deleteById(long id);
 
 }

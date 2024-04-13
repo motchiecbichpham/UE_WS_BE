@@ -1,6 +1,7 @@
 package miage.thibichpham.backend.controller;
 
 import java.util.ArrayList;
+import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
@@ -10,9 +11,10 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -26,6 +28,7 @@ import miage.thibichpham.backend.model.Company;
 import miage.thibichpham.backend.model.Job;
 import miage.thibichpham.backend.model.UserType;
 import miage.thibichpham.backend.model.response.LoginResponse;
+import miage.thibichpham.backend.model.response.StringResponse;
 import miage.thibichpham.backend.security.CustomUserService;
 import miage.thibichpham.backend.security.JwtGenerator;
 import miage.thibichpham.backend.service.company.ICompanyService;
@@ -51,19 +54,17 @@ public class CompanyController {
 
   // AUTH API
 
-  //sign up new company account
   @PostMapping("/sign-up")
-  public ResponseEntity<String> register(@RequestBody Company c) {
+  public ResponseEntity<StringResponse> register(@RequestBody Company c) {
     Company comByContact = companyService.getCompanyByContact(c.getContact());
     if (comByContact != null) {
-      return new ResponseEntity<>("Company with contact " + c.getContact() + " already exists",
-          HttpStatus.CONFLICT);
+      StringResponse response = new StringResponse("Company with contact " + c.getContact() + " already exists");
+      return ResponseEntity.status(HttpStatus.CONFLICT).body(response);
     }
     companyService.register(c);
     return ResponseEntity.status(HttpStatus.CREATED).build();
   }
 
-  //login with jwt
   @PostMapping("/login")
   public ResponseEntity<LoginResponse> login(@RequestBody Company company) {
     customUserService.setUserType(UserType.COMPANY);
@@ -78,108 +79,116 @@ public class CompanyController {
     return ResponseEntity.ok().body(lr);
   }
 
-  //update company account
-  @PutMapping("/{id}")
-  public ResponseEntity<Company> updateCompany(@PathVariable("id") long id, @RequestBody Company company) {
-    Company comById = companyService.getCompany(id);
-    if (comById == null) {
-      return new ResponseEntity<>(company, HttpStatus.NOT_FOUND);
-
-    }
-
-    company.setId(id);
-    company.setPassword(comById.getPassword());
-    company.setContact(comById.getContact());
-    companyService.updateCompany(company);
-    return new ResponseEntity<>(company, HttpStatus.OK);
-  }
-
-  
-  @DeleteMapping("/{id}")
-  public ResponseEntity<String> deleteCompany(@PathVariable("id") long id) {
+  @PatchMapping("/{id}")
+  public ResponseEntity<Company> updateCompany(@PathVariable("id") long id, @RequestBody Company company,
+      Authentication authentication) {
     Company existedCompany = companyService.getCompany(id);
     if (existedCompany == null) {
-      return new ResponseEntity<>("Company with ID " + id + " not found", HttpStatus.NOT_FOUND);
-    }
-
-    companyService.deleteCompanyById(id);
-    return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-  }
-
-  @GetMapping("/{id}")
-  public ResponseEntity<Company> getCompany(@PathVariable("id") long id) {
-    Company c = companyService.getCompany(id);
-    if (c == null) {
       return new ResponseEntity<>(HttpStatus.NOT_FOUND);
     }
-    return new ResponseEntity<>(c, HttpStatus.OK);
+    if (!validTokenWithData(authentication, existedCompany.getContact())) {
+      return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+    }
+    company.setId(id);
+    company.setPassword(existedCompany.getPassword());
+    company.setContact(existedCompany.getContact());
+    companyService.updateCompany(company);
+    return ResponseEntity.status(HttpStatus.OK).body(company);
   }
 
+  // ------------------------------------------------------------------------------------------------------------------
 
   // JOB API
 
-  // create new job
   @PostMapping("/create-job")
-  public ResponseEntity<String> createJob(@RequestBody Job j) {
-    Company existedCompany = companyService.getCompany(j.getCompany().getId());
+  public ResponseEntity<StringResponse> createJob(@RequestBody Job job, Authentication authentication) {
+    Company existedCompany = companyService.getCompanyByContact(job.getCompany().getContact());
+    StringResponse response = new StringResponse("");
     if (existedCompany == null) {
-      return new ResponseEntity<>("Company with ID " + j.getCompany().getId() + " not found", HttpStatus.NOT_FOUND);
+      response.setMessage("Company with contact " + job.getCompany().getId() + " not found");
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
-    companyService.createJob(j);
+    if (!validTokenWithData(authentication, existedCompany.getContact())) {
+      response.setMessage("Forbidden");
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+    job.setCreatedDate(new Date());
+    companyService.createJob(job);
+    response.setMessage("Create job successfully");
     return ResponseEntity.status(HttpStatus.CREATED).build();
 
   }
 
-  //get all jobs
   @GetMapping("/job")
-  public ResponseEntity<ArrayList<Job>> getJobsByCompany(@RequestParam("companyId") long companyId) {
+  public ResponseEntity<ArrayList<Job>> getJobsByCompany(@RequestParam("companyId") long companyId,
+      Authentication authentication) {
+    Company existedCompany = companyService.getCompany(companyId);
+    if (existedCompany == null) {
+      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+
+    }
+    if (!validTokenWithData(authentication, existedCompany.getContact())) {
+      return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+    }
     ArrayList<Job> jobs = companyService.getJobs(companyId);
     if (jobs.isEmpty()) {
       return new ResponseEntity<>(HttpStatus.NO_CONTENT);
     }
-    return new ResponseEntity<>(jobs, HttpStatus.OK);
+    return ResponseEntity.status(HttpStatus.OK).body(jobs);
   }
 
-  //get job by id
   @GetMapping("/job/{id}")
-  public ResponseEntity<Job> getJobById(@PathVariable("id") long id) {
-    Job job = companyService.getJobById(id);
-    if (job == null) {
-      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+  public ResponseEntity<?> getJobById(@PathVariable("id") long id, Authentication authentication) {
+    Job existedJob = companyService.getJobById(id);
+    StringResponse response = new StringResponse("");
+    if (existedJob == null) {
+      response.setMessage("Job with ID " + id + " not found");
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
     }
-    return new ResponseEntity<>(job, HttpStatus.OK);
+    if (!validTokenWithData(authentication, existedJob.getCompany().getContact())) {
+      response.setMessage("Forbidden");
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+    return ResponseEntity.status(HttpStatus.OK).body(existedJob);
   }
 
-  //update job
   @PutMapping("/job/{id}")
-  public ResponseEntity<Job> updateJob(@PathVariable("id") long id, @RequestBody Job job) {
+  public ResponseEntity<StringResponse> updateJob(@PathVariable("id") long id, @RequestBody Job job,
+      Authentication authentication) {
+    StringResponse response = new StringResponse("");
     Job existedJob = companyService.getJobById(id);
     if (existedJob == null) {
-      return new ResponseEntity<>(job, HttpStatus.NOT_FOUND);
+      response.setMessage("Job with ID " + id + " not found");
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+    }
+    if (!validTokenWithData(authentication, job.getCompany().getContact())) {
+      response.setMessage("Forbidden");
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
     }
     job.setId(id);
+    job.setCreatedDate(existedJob.getCreatedDate());
     companyService.updateJob(job);
-    return new ResponseEntity<>(job, HttpStatus.OK);
+    response.setMessage("Update successfully");
+    return ResponseEntity.status(HttpStatus.OK).body(response);
   }
 
-  //job delete
-  @DeleteMapping("/job/{id}")
-  public ResponseEntity<String> deleteJob(@PathVariable("id") long id) {
-    Job existedJob = companyService.getJobById(id);
-    if (existedJob == null) {
-      return new ResponseEntity<>("Job with ID " + id + " not found", HttpStatus.NOT_FOUND);
-    }
-
-    companyService.deleteJob(existedJob);
-    return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
-  }
-
+  // ------------------------------------------------------------------------------------------------------------------
   // APPLICATION API
 
-  // get all applications for each job
   @GetMapping("/application")
-  public ResponseEntity<ArrayList<Application>> getApplicationByJob(@RequestParam("jobId") long jobId) {
-    ArrayList<Application> applications = companyService.getApplications(jobId);
+  public ResponseEntity<ArrayList<Application>> getApplicationByJob(@RequestParam("jobId") long jobId,
+      Authentication authentication) {
+    Job existedJob = companyService.getJobById(jobId);
+    StringResponse response = new StringResponse("");
+    if (existedJob == null) {
+      response.setMessage("Job not found");
+      return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+    }
+    if (!validTokenWithData(authentication, existedJob.getCompany().getContact())) {
+      response.setMessage("Forbidden");
+      return new ResponseEntity<>(HttpStatus.FORBIDDEN);
+    }
+    ArrayList<Application> applications = companyService.getApplicationsByJob(jobId);
     if (applications.isEmpty()) {
       return new ResponseEntity<>(HttpStatus.NO_CONTENT);
 
@@ -187,13 +196,32 @@ public class CompanyController {
     return new ResponseEntity<>(applications, HttpStatus.OK);
   }
 
-  // get file CV
   @GetMapping("/file-application/{id}")
-  public ResponseEntity<byte[]> getFile(@PathVariable long id) {
-    Application app = companyService.getApplicationById(id);
+  public ResponseEntity<?> getFile(@PathVariable long id, Authentication authentication) {
+    Application existedApplication = companyService.getApplicationById(id);
+    StringResponse response = new StringResponse("");
+    if (existedApplication == null) {
+      response.setMessage("Application with ID " + id + " not found");
+      return ResponseEntity.status(HttpStatus.NOT_FOUND).body(response);
+
+    }
+    if (!validTokenWithData(authentication, existedApplication.getJob().getCompany().getContact())) {
+      response.setMessage("Forbidden");
+      return ResponseEntity.status(HttpStatus.FORBIDDEN).body(response);
+    }
+    companyService.sendEmail(existedApplication);
     return ResponseEntity.ok()
-        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + app.getResumeName() + "\"")
-        .body(app.getResume());
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + existedApplication.getResumeName() + "\"")
+        .body(existedApplication.getResume());
   }
 
+  // ------------------------------------------------------------------------------------------------------------------
+  private boolean validTokenWithData(Authentication authentication, String username) {
+    UserDetails userDetails = (UserDetails) authentication.getPrincipal();
+    if (!userDetails.getUsername().equals(username)) {
+      return false;
+    }
+    return true;
+
+  }
 }

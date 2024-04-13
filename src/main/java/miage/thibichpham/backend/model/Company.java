@@ -23,6 +23,7 @@ public class Company implements Serializable {
   private String contact;
   private String address;
   private String city;
+  
   @Lob
   @Column(length = 256)
   private String introduction;

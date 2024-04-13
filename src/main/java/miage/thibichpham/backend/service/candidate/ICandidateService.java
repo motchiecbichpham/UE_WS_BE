@@ -8,7 +8,9 @@ import miage.thibichpham.backend.model.Company;
 import miage.thibichpham.backend.model.Job;
 
 public interface ICandidateService {
-  // candidate
+
+  // CANDIDATE
+
   void register(Candidate c);
 
   Candidate getCandidateByEmail(String email);
@@ -17,30 +19,24 @@ public interface ICandidateService {
 
   void updateCandidate(Candidate c);
 
-  void deleteCandidat(long id);
-
-  // job
+  // JOB
 
   ArrayList<Job> getJobs();
 
   Job getJobById(long id);
 
-  // company
-
-  Company getCompanyById(long id);
-
-  ArrayList<Company> getCompany();
-
-  // application
+  // APPLICATION
 
   void createApplication(Application a);
 
-  void deleteApplication(long id);
+  void deleteApplication(long applicationId);
 
-  ArrayList<Application> getApplications(long id);
+  ArrayList<Application> getApplicationsByCandidate(long candidateId);
 
   Boolean isCandidateApplied(Candidate c, Job j);
 
-  Application getApplicationById(long id);
+  Application getApplicationById(long applicationId);
+
+  void sendEmail(Application application);
 
 }

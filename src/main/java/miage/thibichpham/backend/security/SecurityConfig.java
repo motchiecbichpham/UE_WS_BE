@@ -46,7 +46,6 @@ public class SecurityConfig {
         .requestMatchers("/api/v1/candidate/sign-up").permitAll()
         .requestMatchers("/api/v1/company/sign-up").permitAll()
         .requestMatchers("/api/v1/company/login").permitAll()
-
         .anyRequest().authenticated()
         .and()
         .httpBasic();

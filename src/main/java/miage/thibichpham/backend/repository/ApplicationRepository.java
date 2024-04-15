@@ -30,3 +30,4 @@ public interface ApplicationRepository extends JpaRepository<Application, Long> 
   @Query(value = "Delete from Application where job_id = :id", nativeQuery = true)
   void deleteByJob(@Param("id") long id);
 }
+

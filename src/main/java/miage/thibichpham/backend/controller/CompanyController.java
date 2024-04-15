@@ -14,7 +14,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.CrossOrigin;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -79,7 +78,7 @@ public class CompanyController {
     return ResponseEntity.ok().body(lr);
   }
 
-  @PatchMapping("/{id}")
+  @PutMapping("/{id}")
   public ResponseEntity<Company> updateCompany(@PathVariable("id") long id, @RequestBody Company company,
       Authentication authentication) {
     Company existedCompany = companyService.getCompany(id);

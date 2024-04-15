@@ -4,7 +4,6 @@ import java.util.ArrayList;
 
 import miage.thibichpham.backend.model.Application;
 import miage.thibichpham.backend.model.Candidate;
-import miage.thibichpham.backend.model.Company;
 import miage.thibichpham.backend.model.Job;
 
 public interface ICandidateService {
